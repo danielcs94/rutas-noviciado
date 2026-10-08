@@ -35,7 +35,8 @@ config.js     origen, lugares de referencia (para nombrar rutas) e intensidades
 planner.js    genera los bucles aleatorios → calibra la distancia → telemetría → puntuación
 api.js        enrutado a pie: Valhalla (preferencia de cuestas por intensidad) con OSRM de reserva
 datasets.js   superficie/semáforos y elevación precalculados; "imán verde" hacia parques
-map.js        Leaflet + teselas OSM; el trazado se colorea por superficie
+map.js        mapa vectorial MapLibre GL + OpenFreeMap (sin clave); trazado por superficie y flechas de sentido
+mapstyle.js   recolorea el estilo base con la estética de Apple Maps (claro y oscuro)
 profile.js    perfil de elevación en SVG con cursor sincronizado con el mapa
 app.js        interfaz, historial (localStorage), GPX y enlace de Google Maps
 ```

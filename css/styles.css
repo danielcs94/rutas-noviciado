@@ -312,14 +312,14 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 /* ---------------------------------------------------------------------------
    Marcadores del mapa
 --------------------------------------------------------------------------- */
-.pin { background: none; border: 0; }
+/* Marcadores HTML del mapa (MapLibre los centra en su coordenada) */
+.pin { display: grid; place-items: center; cursor: default; }
 .pin span {
   display: grid; place-items: center;
-  transform: translate(-50%, -50%);
   border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
 }
-.pin-origin span { width: 30px; height: 30px; background: var(--ink); border: 3px solid var(--map-casing); font-size: 14px; }
+.pin-origin span { width: 32px; height: 32px; background: var(--ink); border: 3px solid var(--map-casing); font-size: 15px; }
 .pin-wp span { width: 24px; height: 24px; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); font: 800 11px/1 var(--font); }
 .pin-km span {
   width: 18px; height: 18px;
@@ -328,11 +328,18 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   font: 600 10px/1 var(--font);
   box-shadow: none;
 }
-.leaflet-container { font-family: var(--font); }
-/* Mapa base apagado para que el trazado (coloreado por superficie) destaque sobre las carreteras */
-.leaflet-tile-pane { filter: saturate(.25) contrast(.92) brightness(1.04); }
-/* Modo oscuro del mapa: invierte las teselas y devuelve el tono original a los colores */
-.tiles-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.2); }
-.tiles-dark .leaflet-control-attribution { background: rgba(26, 26, 25, .8); color: var(--ink-3); }
-.tiles-dark .leaflet-control-attribution a { color: var(--ink-2); }
-.leaflet-tooltip { font-family: var(--font); }
+.pin-place span { width: 9px; height: 9px; background: var(--ink); border: 2px solid var(--map-casing); box-shadow: none; }
+.pin-hover span { width: 14px; height: 14px; background: var(--ink); border: 3px solid var(--map-casing); }
+
+/* Controles de MapLibre con los tokens de la app */
+.maplibregl-map { font-family: var(--font); }
+.maplibregl-ctrl-group { background: var(--surface); border-radius: 10px; box-shadow: var(--shadow) !important; }
+.maplibregl-ctrl-group button + button { border-top-color: var(--line); }
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: none; }
+:root[data-theme="dark"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+}
+.maplibregl-ctrl-attrib { background: var(--surface) !important; color: var(--ink-3); }
+.maplibregl-ctrl-attrib a { color: var(--ink-2); }
+.maplibregl-ctrl-attrib-button { filter: none; }

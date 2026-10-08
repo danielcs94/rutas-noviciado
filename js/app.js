@@ -30,16 +30,16 @@ const store = {
 // ---------------------------------------------------------------------------
 // Tema
 // ---------------------------------------------------------------------------
-const mapView = createMap($('map'));
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 const effectiveTheme = () => document.documentElement.dataset.theme || (systemDark.matches ? 'dark' : 'light');
+const savedTheme = store.get(THEME_KEY, null);
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+const mapView = createMap($('map'), effectiveTheme());
 
 function applyTheme() {
   mapView.setTheme(effectiveTheme());
   if (state.current) showCandidate(state.current, { fit: false });
 }
-const savedTheme = store.get(THEME_KEY, null);
-if (savedTheme) document.documentElement.dataset.theme = savedTheme;
 applyTheme();
 systemDark.addEventListener('change', () => { if (!document.documentElement.dataset.theme) applyTheme(); });
 $('theme-toggle').addEventListener('click', () => {
