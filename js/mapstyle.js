@@ -81,7 +81,7 @@ export async function appleStyle(theme) {
   const p = PALETTES[theme] ?? PALETTES.light;
   let style;
   try {
-    style = structuredClone(await base());
+    style = JSON.parse(JSON.stringify(await base())); // copia profunda (structuredClone falta en iOS < 15.4)
   } catch {
     baseP = null;
     return FALLBACK_URL;

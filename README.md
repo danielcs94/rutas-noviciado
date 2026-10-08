@@ -26,7 +26,11 @@ Para tenerla como una app:
 - **iPhone (Safari)**: Compartir → *Añadir a pantalla de inicio*.
 - **Android (Chrome)**: menú ⋮ → *Añadir a pantalla de inicio* (o *Instalar app*).
 
-Para actualizarla, haz commit y push a `main`; GitHub Pages la vuelve a publicar en 1-2 minutos.
+Para actualizarla, **versiona primero los archivos** y luego haz commit y push a `main`; GitHub Pages la vuelve a publicar en 1-2 minutos:
+
+```bash
+python3 tools/release.py   # pone ?v=<fecha> a CSS y módulos JS para que el móvil no mezcle versiones
+```
 
 ## Cómo funciona
 

@@ -34,7 +34,16 @@ const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 const effectiveTheme = () => document.documentElement.dataset.theme || (systemDark.matches ? 'dark' : 'light');
 const savedTheme = store.get(THEME_KEY, null);
 if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-const mapView = createMap($('map'), effectiveTheme());
+// Si el mapa no puede arrancar (WebGL desactivado, librería sin cargar…), la app sigue
+// funcionando sin él: se generan rutas y se abren en Google Maps o se descarga el GPX.
+const noMap = { setTheme() {}, draw() {}, fit() {}, hover() {}, invalidate() {} };
+let mapView = noMap;
+try {
+  mapView = createMap($('map'), effectiveTheme());
+} catch (err) {
+  console.error('Mapa no disponible', err);
+  $('map-empty').innerHTML = '<p>No se pudo cargar el mapa en este navegador. Puedes generar rutas igualmente y abrirlas en Google Maps.</p>';
+}
 
 function applyTheme() {
   mapView.setTheme(effectiveTheme());

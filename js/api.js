@@ -14,6 +14,14 @@ const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
 const memo = new Map();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// AbortSignal.timeout no existe antes de iOS 16: equivalente con AbortController.
+function timeoutSignal(ms) {
+  if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
 // Cola por host: los servidores públicos penalizan ráfagas de peticiones.
 const lastCall = new Map();
 async function throttle(url, minGap) {
@@ -31,7 +39,7 @@ async function fetchJSON(url, opts = {}, { retries = 4, base = 900, gap = 150 } 
     try {
       await throttle(url, gap);
       // Timeout de 15 s: un servidor caído no debe dejar la app colgada.
-      const r = await fetch(url, { ...opts, signal: AbortSignal.timeout(15000) });
+      const r = await fetch(url, { ...opts, signal: timeoutSignal(15000) });
       if (r.ok) {
         const json = await r.json();
         memo.set(key, json);
