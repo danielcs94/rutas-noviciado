@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rutas Noviciado</title>
+  <meta name="description" content="Generador de rutas de running circulares desde Noviciado Coffee Shop (Madrid), máximo 10 km.">
+  <!-- App en el móvil: "Añadir a pantalla de inicio" la abre a pantalla completa con su icono -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Rutas">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <header class="brand">
+        <div>
+          <p class="eyebrow">☕ Salida y llegada · Noviciado Coffee Shop</p>
+          <h1>Rutas Noviciado</h1>
+          <p class="sub">Bucles aleatorios para correr por Madrid, atraídos hacia parques y paseos peatonales. Máximo 10 km.</p>
+        </div>
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">◐</button>
+      </header>
+
+      <form class="controls" id="controls">
+        <div class="field">
+          <div class="field-head">
+            <label for="km">Distancia</label>
+            <output id="km-out" for="km"><b>8.0</b> km</output>
+          </div>
+          <input type="range" id="km" min="3" max="10" step="0.5" value="8">
+          <div class="range-scale"><span>3 km</span><span>10 km · máx.</span></div>
+        </div>
+
+        <fieldset class="field">
+          <legend>Intensidad</legend>
+          <div class="segmented" id="intensity"></div>
+          <p class="hint" id="intensity-hint"></p>
+        </fieldset>
+
+        <button class="primary" id="generate" type="submit">Generar ruta aleatoria</button>
+        <p class="hint center">Cada vez sale un bucle distinto por Madrid, con salida y llegada en Noviciado.</p>
+        <div class="progress" id="progress" hidden>
+          <div class="bar"><span id="progress-bar"></span></div>
+          <p id="progress-text">Calculando…</p>
+        </div>
+        <p class="error" id="error" role="alert" hidden></p>
+      </form>
+
+      <section class="result" id="result" hidden>
+        <div class="result-head">
+          <p class="eyebrow" id="r-zone"></p>
+          <h2 id="r-name"></h2>
+        </div>
+
+        <div class="stats">
+          <div class="stat hero"><span class="v" id="r-km"></span><span class="l">distancia exacta</span></div>
+          <div class="stat"><span class="v" id="r-gain"></span><span class="l">desnivel +</span></div>
+          <div class="stat"><span class="v" id="r-time"></span><span class="l">tiempo estimado</span></div>
+          <div class="stat"><span class="v" id="r-signals"></span><span class="l">semáforos</span></div>
+        </div>
+
+        <div class="block">
+          <h3>Superficie</h3>
+          <div id="r-surface"></div>
+          <p class="hint" id="r-overlap"></p>
+        </div>
+
+        <div class="block">
+          <h3>Perfil de elevación</h3>
+          <div class="profile" id="r-profile"></div>
+        </div>
+
+        <div class="block">
+          <h3>Sesión · <span id="r-intensity"></span></h3>
+          <p class="workout" id="r-workout"></p>
+        </div>
+
+        <div class="block">
+          <h3>Por dónde pasa</h3>
+          <ol class="waypoints" id="r-waypoints"></ol>
+        </div>
+
+        <div class="actions">
+          <a class="primary" id="r-gmaps" target="_blank" rel="noopener">Abrir en Google Maps</a>
+          <button class="secondary" id="r-gpx" type="button">Descargar GPX</button>
+          <button class="secondary" id="r-copy" type="button">Copiar enlace</button>
+        </div>
+        <p class="note">El enlace de Google Maps usa los mismos 3 puntos de paso (A, B, C) que el generador, pero la app recalcula el camino entre ellos y puede variar algo. Para seguir la ruta exacta, importa el GPX en Strava, Garmin o Komoot.</p>
+      </section>
+
+      <section class="list-section" id="alternatives" hidden>
+        <h3>Alternativas</h3>
+        <div class="cards" id="alt-list"></div>
+      </section>
+
+      <section class="list-section" id="history" hidden>
+        <div class="list-head">
+          <h3>Historial</h3>
+          <button class="link-btn" id="history-clear" type="button">Borrar</button>
+        </div>
+        <div class="cards" id="history-list"></div>
+      </section>
+
+      <footer class="foot">
+        Enrutado a pie: Valhalla (OSRM de reserva) · Superficie y semáforos: OpenStreetMap (precalculado) · Elevación: Copernicus GLO-90 vía Open-Meteo. Datos © colaboradores de OpenStreetMap.
+      </footer>
+    </aside>
+
+    <main class="map-wrap">
+      <div id="map" aria-label="Mapa de la ruta"></div>
+      <div class="map-empty" id="map-empty">
+        <p>Elige distancia e intensidad y pulsa <b>Generar ruta aleatoria</b>.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
