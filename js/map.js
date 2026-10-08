@@ -32,6 +32,7 @@ function arrowImage() {
 }
 
 export function createMap(container, theme = 'light') {
+  if (typeof maplibregl === 'undefined') throw new Error('MapLibre no se ha cargado');
   let current = theme;
   let route = null;          // ruta dibujada (para redibujar al cambiar de estilo)
   let markers = [];
@@ -147,6 +148,8 @@ export function createMap(container, theme = 'light') {
     // Puntos de paso A, B, C (los mismos del enlace de Google Maps)
     (c.urlPoints ?? []).forEach((p, i) => add(el('pin-wp', 'ABC'[i], `Punto de paso ${'ABC'[i]}`), p));
   }
+
+  map.on('error', (e) => console.warn('Mapa:', e.error?.message ?? e));
 
   map.on('style.load', () => {
     addRouteLayers();
