@@ -1,73 +1,124 @@
 # Rutas Noviciado
 
-Panel web que genera **bucles aleatorios** para correr por Madrid, siempre con salida y llegada en
-**Noviciado Coffee Shop** (Calle del Noviciado, 9). Ninguna ruta supera los **10 km**.
+Generador de rutas para salir a correr por Madrid. Todas empiezan y terminan en la cafetería
+Noviciado Coffee Shop (Calle del Noviciado, 9) y ninguna pasa de 10 km.
 
-- **Distancia**: de 3 a 10 km. Cada bucle se escala para quedarse justo por debajo de lo pedido.
-- **Intensidad**: Suave, Medio o Avanzado. Cambia la preferencia de cuestas del router, la puntuación (desnivel, semáforos, % de asfalto) y el ritmo y la sesión que se proponen.
-- **Aleatorio**: cada vez que pulsas el botón salen 4 bucles nuevos, uno hacia cada cuadrante, y se muestra el mejor. Los otros quedan como alternativas.
-- **Telemetría**: distancia exacta, desnivel positivo, tiempo, semáforos, % de superficie (parque/peatonal, asfalto/acera, tierra), % de tramos repetidos, perfil de elevación interactivo y lugares por los que pasa.
-- **Salidas**: enlace a Google Maps a pie (con los mismos 3 puntos de paso), descarga de GPX e historial local de las últimas 8 rutas.
+Le dices cuántos kilómetros quieres y con qué intensidad, y te propone un bucle distinto cada vez,
+intentando meterte por parques: Madrid Río, el Parque del Oeste, la Casa de Campo, el Retiro...
 
-## Arrancar
+**Pruébala aquí: https://danielcs94.github.io/rutas-noviciado/**
 
-```bash
-cd rutas-noviciado
-python3 tools/serve.py
-```
+Fue la primera versión. Luego la generalicé en [Rutas A→B](https://github.com/danielcs94/rutas-ab),
+que hace rutas entre dos puntos cualesquiera de hasta 42 km.
 
-Después abre http://localhost:5180. Es un servidor estático con `no-cache`, para que el navegador no sirva módulos viejos después de editarlos.
+<p>
+  <img src="docs/captura-escritorio.webp" alt="Ruta de 7,23 km por Sabatini, Madrid Río y la Casa de Campo" width="72%">
+  <img src="docs/captura-movil.webp" alt="La app en el móvil en modo oscuro" width="24%">
+</p>
 
-## En el móvil
+## Qué te da cada ruta
 
-Publicada con GitHub Pages en **https://danielcs94.github.io/rutas-noviciado/**
+- La distancia exacta y el tiempo estimado según el ritmo de la intensidad elegida.
+- El desnivel positivo y un perfil de elevación. Al pasar el dedo por el perfil, se marca el punto en el mapa.
+- Cuánta parte del recorrido es parque o paseo peatonal, cuánta asfalto y cuánta tierra.
+- Los semáforos que te vas a encontrar.
+- Si el bucle repite algún tramo (ir y volver por la misma calle).
+- Los sitios conocidos por los que pasa, que también le dan nombre a la ruta.
+- Un enlace para abrirla en Google Maps y la opción de descargarla en GPX para Strava, Garmin o Komoot.
 
-Para tenerla como una app:
-- **iPhone (Safari)**: Compartir → *Añadir a pantalla de inicio*.
-- **Android (Chrome)**: menú ⋮ → *Añadir a pantalla de inicio* (o *Instalar app*).
-
-Para actualizarla, **versiona primero los archivos** y luego haz commit y push a `main`; GitHub Pages la vuelve a publicar en 1-2 minutos:
-
-```bash
-python3 tools/release.py   # pone ?v=<fecha> a CSS y módulos JS para que el móvil no mezcle versiones
-```
+Se puede añadir a la pantalla de inicio del móvil y se abre como una app normal.
 
 ## Cómo funciona
 
+Todo pasa en el navegador. No hay backend ni APIs de pago.
+
+Para inventar un bucle, la app elige una dirección al azar y dibuja un círculo que pasa por la
+cafetería. Sobre ese círculo coloca tres puntos de paso y los desplaza hacia la zona cercana con más
+sendas de parque o de tierra. Luego pide la ruta a pie que une esos puntos a
+[Valhalla](https://github.com/valhalla/valhalla), un router de código abierto que usa datos de
+OpenStreetMap.
+
+La distancia que sale casi nunca es la que pediste a la primera, así que el tamaño del círculo se
+ajusta con el método de la secante: dos o tres intentos y la ruta queda justo por debajo de los
+kilómetros que querías. Cada vez se generan cuatro bucles, uno hacia cada lado de Madrid, y se queda
+el que mejor encaja con la intensidad (desnivel, semáforos y cantidad de asfalto). Los otros tres
+salen como alternativas.
+
+La superficie y los semáforos los saco de OpenStreetMap, y el desnivel de un modelo de terreno de
+Copernicus. Esos datos están precalculados en `data/` para no depender de servicios lentos cada vez
+que se genera una ruta.
+
+El mapa es vectorial, con MapLibre GL y teselas gratuitas de OpenFreeMap. Le cambié los colores para
+que se parezca a Apple Maps y tiene modo claro y oscuro.
+
 ```
-config.js     origen, lugares de referencia (para nombrar rutas) e intensidades
-planner.js    genera los bucles aleatorios → calibra la distancia → telemetría → puntuación
-api.js        enrutado a pie: Valhalla (preferencia de cuestas por intensidad) con OSRM de reserva
-datasets.js   superficie/semáforos y elevación precalculados; "imán verde" hacia parques
-map.js        mapa vectorial MapLibre GL + OpenFreeMap (sin clave); trazado por superficie y flechas de sentido
-mapstyle.js   recolorea el estilo base con la estética de Apple Maps (claro y oscuro)
-profile.js    perfil de elevación en SVG con cursor sincronizado con el mapa
-app.js        interfaz, historial (localStorage), GPX y enlace de Google Maps
+js/
+  config.js      punto de salida, lugares de referencia e intensidades
+  planner.js     genera los bucles, ajusta la distancia y los puntúa
+  api.js         peticiones a Valhalla (y a OSRM si Valhalla falla)
+  datasets.js    lee los datos precalculados de superficie, semáforos y elevación
+  map.js         el mapa y todo lo que se dibuja encima
+  mapstyle.js    la paleta tipo Apple Maps
+  profile.js     el perfil de elevación en SVG
+  app.js         la interfaz
+tools/
+  build_surface.py     descarga las calles de OpenStreetMap y las clasifica
+  build_elevation.py   descarga la rejilla de elevación
+  serve.py             servidor local sin caché
+  release.py           versiona los archivos antes de publicar
 ```
 
-1. **Forma aleatoria**: se elige una dirección al azar y se traza un círculo que pasa por Noviciado. Sobre él se colocan 3 puntos de paso (A, B, C) con algo de ruido en ángulo y radio. Se generan 4 bucles, uno por cuadrante.
-2. **Imán verde**: cada punto de paso se desplaza a la zona cercana con más metros de senda de parque o tierra (según OpenStreetMap), penalizando la distancia. Así los bucles tiran hacia el Parque del Oeste, la Casa de Campo, Madrid Río, el Retiro, etc., sin plantillas fijas.
-3. **Calibración**: la distancia crece casi en proporción al tamaño del círculo. Se estima, se enruta a pie y se afina con el método de la secante (3-5 llamadas), quedándose siempre por debajo del objetivo y de 10 km.
-4. **Enrutado a pie**: Valhalla (perfil `pedestrian`) con preferencias de corredor: `walkway_factor` para paseos peatonales, `use_tracks` para caminos de tierra y `use_hills` según la intensidad. Las rutas se guardan en `localStorage`.
-5. **Telemetría local**: superficie y semáforos salen de un extracto de OpenStreetMap ya clasificado (`data/surface.json`), y el desnivel de una rejilla del modelo de terreno Copernicus de 90 m (`data/elevation.json`). Los dos cubren unos 3 km alrededor de Noviciado.
-6. **Puntuación**: se elige el bucle que mejor encaja con la intensidad (desnivel por km, semáforos, % de asfalto) y que menos tramos repite.
+## Cosas que me dieron guerra
 
-## Regenerar los datos
+Al principio la superficie se consultaba en directo a Overpass (la API de OpenStreetMap). Cada consulta
+tardaba unos 20 segundos y muchas veces devolvía error. Al final escribí un script en Python que
+descarga una vez las 38.785 calles y sendas de la zona, las clasifica en asfalto, parque o tierra y lo
+guarda todo en un JSON de menos de 2 MB. Desde la app se consulta al instante.
 
-Hazlo cuando quieras actualizarlos con OSM o ampliar la zona (`BBOX` en los scripts):
+El servidor público de Valhalla solo acepta 10 puntos por petición. Las rutas con más puntos se parten
+en trozos que comparten el punto de unión y luego se pegan.
+
+Para que el router no se fuera por calles cuando había un parque al lado, los puntos de paso se
+"imantan" a la zona con más metros de senda verde dentro de un radio. Es lo que más se nota en el
+resultado.
+
+Cuando la publiqué en GitHub Pages, en el móvil a veces no cargaba el mapa. El navegador guardaba en
+caché unos archivos nuevos y otros viejos, y la mezcla rompía la app. Ahora `tools/release.py` añade
+una versión a todos los módulos antes de cada publicación.
+
+## Ejecutarla en local
 
 ```bash
-python3 tools/build_surface.py     # Overpass → data/surface.json   (~1 MB)
-python3 tools/build_elevation.py   # Open-Meteo → data/elevation.json
+python3 tools/serve.py
 ```
 
-Requisito: `pip install requests`
+Y abrir http://localhost:5180. No hace falta instalar nada más.
 
-## Limitaciones conocidas
+Antes de subir cambios:
 
-- **La URL de Google Maps no reproduce exactamente el trazado.** En el móvil, Google Maps solo acepta 3 paradas y recalcula el camino entre ellas. El trazado exacto está en el **GPX**.
-- **El desnivel es aproximado.** El modelo de terreno tiene una resolución de 90 m, y además se suaviza y se ignoran variaciones de menos de 2 m.
-- **El tramo urbano Noviciado ↔ parques es inevitable.** Por eso ninguna ruta llega al 100 % de parque.
-- **Routers públicos de FOSSGIS** (Valhalla/OSRM): son gratuitos y limitan las ráfagas de peticiones. Cada generación tarda unos 20-25 s.
-- **La distancia final queda entre un 90 % y un 100 % de la pedida.** Al desplazar los puntos hacia los parques, la distancia no crece de forma perfectamente suave con el tamaño del bucle.
-- **Los bucles hacia el norte y el este** (Chamberí, Salamanca) tienen menos parque cerca, así que suelen salir con más asfalto.
+```bash
+python3 tools/release.py
+```
+
+Si quieres regenerar los datos de OpenStreetMap o ampliar la zona (cambiando `BBOX` en los scripts),
+necesitas `pip install requests` y:
+
+```bash
+python3 tools/build_surface.py
+python3 tools/build_elevation.py
+```
+
+## Limitaciones
+
+El enlace de Google Maps lleva los tres puntos de paso, pero Google recalcula el camino entre ellos y
+puede no coincidir del todo. Si quieres seguir la ruta exacta, usa el GPX.
+
+Generar una ruta tarda unos 20 segundos, porque los servidores gratuitos limitan cuántas peticiones
+les puedes hacer seguidas.
+
+Las rutas que salen hacia el norte o el este tienen menos parques cerca y suelen llevar más asfalto.
+
+## Créditos
+
+Datos de calles © colaboradores de OpenStreetMap (ODbL). Rutas con Valhalla y OSRM de FOSSGIS. Mapa
+de OpenFreeMap. Elevación del modelo Copernicus GLO-90 servido por Open-Meteo.

@@ -15,6 +15,12 @@ const SURFACES = [
 
 const state = { km: 8, intensity: 'medio', candidates: [], current: null };
 
+// Estadísticas anónimas (GoatCounter). Cada evento aparece en el panel como una ruta propia,
+// así se ve cuántas veces se genera una ruta, con qué distancia e intensidad, y qué se hace con ella.
+function track(path, title = path) {
+  try { window.goatcounter?.count?.({ path, title, event: true }); } catch { /* sin estadísticas */ }
+}
+
 // ---------------------------------------------------------------------------
 // Almacenamiento local (tolerante a modo privado / bloqueo)
 // ---------------------------------------------------------------------------
@@ -98,8 +104,12 @@ $('controls').addEventListener('submit', async (e) => {
     state.candidates = candidates;
     showCandidate(candidates[0]);
     saveHistory(candidates[0]);
+    track('ruta-generada', `${state.km.toFixed(1)} km · ${INTENSITIES[state.intensity].label}`);
+    track(`distancia-${Math.round(state.km)}km`);
+    track(`intensidad-${state.intensity}`);
     renderHistory();
   } catch (err) {
+    track('error-al-generar', String(err.message).slice(0, 80));
     $('error').textContent = err.message || 'No se pudo calcular la ruta. Inténtalo de nuevo en unos segundos.';
     console.error(err);
     $('error').hidden = false;
@@ -171,9 +181,12 @@ function showCandidate(c, { fit = true } = {}) {
   renderHistory();
 }
 
+$('r-gmaps').addEventListener('click', () => track('abrir-google-maps'));
+
 $('r-gpx').addEventListener('click', () => {
   const c = state.current;
   if (!c) return;
+  track('descargar-gpx');
   const blob = new Blob([toGpx(c)], { type: 'application/gpx+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -186,6 +199,7 @@ $('r-copy').addEventListener('click', async (e) => {
   try {
     await navigator.clipboard.writeText($('r-gmaps').href);
     e.target.textContent = '¡Copiado!';
+    track('copiar-enlace');
   } catch {
     e.target.textContent = 'No se pudo copiar';
   }
