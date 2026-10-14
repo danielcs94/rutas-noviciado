@@ -3,8 +3,9 @@
 Generador de rutas para salir a correr por Madrid. Todas empiezan y terminan en la cafetería
 Noviciado Coffee Shop (Calle del Noviciado, 9) y ninguna pasa de 10 km.
 
-Le dices cuántos kilómetros quieres y con qué intensidad, y te propone un bucle distinto cada vez,
-intentando meterte por parques: Madrid Río, el Parque del Oeste, la Casa de Campo, el Retiro...
+Le dices cuántos kilómetros quieres, con qué intensidad y si prefieres parques o calles, y te propone
+un bucle distinto cada vez: por Madrid Río, el Parque del Oeste, la Casa de Campo, el Retiro... o por
+las plazas del centro. Luego puedes correrlo con la propia app, que te sigue con el GPS.
 
 **Pruébala aquí: https://danielcs94.github.io/rutas-noviciado/**
 
@@ -14,6 +15,9 @@ que hace rutas entre dos puntos cualesquiera de hasta 42 km.
 <p>
   <img src="docs/captura-escritorio.webp" alt="Ruta de 7,23 km por Sabatini, Madrid Río y la Casa de Campo" width="72%">
   <img src="docs/captura-movil.webp" alt="La app en el móvil en modo oscuro" width="24%">
+</p>
+<p>
+  <img src="docs/captura-carrera.webp" alt="Modo carrera en el móvil: 2,91 km, ritmo medio 5:16 y aviso de giro a la izquierda en 140 m" width="24%">
 </p>
 
 ## Qué te da cada ruta
@@ -26,7 +30,21 @@ que hace rutas entre dos puntos cualesquiera de hasta 42 km.
 - Los sitios conocidos por los que pasa, que también le dan nombre a la ruta.
 - Un enlace para abrirla en Google Maps y la opción de descargarla en GPX para Strava, Garmin o Komoot.
 
+Con "Por dónde" eliges el tipo de bucle: Parques (los puntos de paso se acercan a zonas verdes),
+Ciudad (no busca parques y elige el bucle con más calle) o Mezcla (la mitad de cada).
+
 Se puede añadir a la pantalla de inicio del móvil y se abre como una app normal.
+
+## Modo carrera
+
+Con "Empezar carrera" la app usa el GPS del móvil mientras corres la ruta: distancia, tiempo, ritmo
+actual y medio, kilómetros que faltan y el próximo giro. Te avisa por voz de los giros, de cada
+kilómetro con su ritmo y de si te sales de la ruta (y hacia dónde queda). Se pausa sola en los
+semáforos, y al terminar te da los parciales y el GPX de lo que has corrido de verdad. Las carreras se
+guardan en "Mis carreras".
+
+Es el mismo modo carrera que [Rutas A→B](https://github.com/danielcs94/rutas-ab#modo-carrera), donde
+explico cómo mide la distancia.
 
 ## Cómo funciona
 
@@ -49,7 +67,8 @@ Copernicus. Esos datos están precalculados en `data/` para no depender de servi
 que se genera una ruta.
 
 El mapa es vectorial, con MapLibre GL y teselas gratuitas de OpenFreeMap. Le cambié los colores para
-que se parezca a Apple Maps y tiene modo claro y oscuro.
+que se parezca a Apple Maps. La interfaz tiene un estilo deportivo (titulares condensados en cursiva,
+blanco y negro y acento neón) en modo claro y oscuro, igual que Rutas A→B.
 
 ```
 js/
@@ -61,6 +80,8 @@ js/
   mapstyle.js    la paleta tipo Apple Maps
   profile.js     el perfil de elevación en SVG
   app.js         la interfaz
+  run.js         el modo carrera: pantalla, GPS, voz y mis carreras
+  tracker.js     las cuentas de la carrera: distancia, ritmos, parciales, giros y desvíos
 tools/
   build_surface.py     descarga las calles de OpenStreetMap y las clasifica
   build_elevation.py   descarga la rejilla de elevación
@@ -117,6 +138,10 @@ Generar una ruta tarda unos 20 segundos, porque los servidores gratuitos limitan
 les puedes hacer seguidas.
 
 Las rutas que salen hacia el norte o el este tienen menos parques cerca y suelen llevar más asfalto.
+
+El modo carrera necesita la pantalla encendida: una web no puede usar el GPS con el móvil bloqueado.
+Tampoco tiene acceso a Salud de Apple ni a Health Connect; para guardar ahí la carrera hay que pasar el
+GPX por una app como Strava.
 
 ## Créditos
 
