@@ -287,7 +287,9 @@ export function googleMapsUrl(c) {
     travelmode: 'walking',
     waypoints: c.urlPoints.slice(0, 3).map(fmt).join('|'),
   });
-  return 'https://www.google.com/maps/dir/?' + params.toString().replace(/%2C/g, ',').replace(/%7C/g, '|');
+  // Comas y "|" codificados (%2C, %7C), como pide Google: sin codificar, su página de aviso de
+  // cookies (la primera vez que se abre en un navegador europeo) responde con error 400.
+  return `https://www.google.com/maps/dir/?${params}`;
 }
 
 export function toGpx(c) {
