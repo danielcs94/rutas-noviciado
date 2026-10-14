@@ -41,7 +41,8 @@ Con "Empezar carrera" la app usa el GPS del móvil mientras corres la ruta: dist
 actual y medio, kilómetros que faltan y el próximo giro. Te avisa por voz de los giros, de cada
 kilómetro con su ritmo y de si te sales de la ruta (y hacia dónde queda). Se pausa sola en los
 semáforos, y al terminar te da los parciales y el GPX de lo que has corrido de verdad. Las carreras se
-guardan en "Mis carreras".
+guardan en "Mis carreras". Al empezar en el móvil, una ventana explica cómo bloquear los toques (con el
+Acceso guiado en iPhone) para llevarlo encendido en el bolsillo sin pulsar nada.
 
 Es el mismo modo carrera que [Rutas A→B](https://github.com/danielcs94/rutas-ab#modo-carrera), donde
 explico cómo mide la distancia.
@@ -140,6 +141,7 @@ les puedes hacer seguidas.
 Las rutas que salen hacia el norte o el este tienen menos parques cerca y suelen llevar más asfalto.
 
 El modo carrera necesita la pantalla encendida: una web no puede usar el GPS con el móvil bloqueado.
+Con el Acceso guiado del iPhone se puede llevar encendida sin que se pulse nada.
 Tampoco tiene acceso a Salud de Apple ni a Health Connect; para guardar ahí la carrera hay que pasar el
 GPX por una app como Strava.
 
