@@ -65,7 +65,8 @@ async function calibrate(shape, targetKm, prefs, idx) {
 
   const make = async (r) => {
     const snapRadius = Math.max(150, Math.min(600, r * 1000 * 0.4));
-    const wps = rawWaypoints(shape, r).map((p) => idx.greenSnap(p, snapRadius) ?? p);
+    const raw = rawWaypoints(shape, r);
+    const wps = shape.green ? raw.map((p) => idx.greenSnap(p, snapRadius) ?? p) : raw;
     const route = await routeFoot([O, ...wps, O], prefs);
     return { r, wps, route, km: route.distance / 1000 };
   };
@@ -182,6 +183,12 @@ function landmarksAlong(samples) {
 }
 
 function routeName(c) {
+  // En "Ciudad" el nombre destaca las plazas y monumentos por los que pasa
+  const city = c.landmarks.filter((l) => !l.green).map((l) => l.name);
+  if (c.prefer === 'ciudad' && city.length) {
+    const pick = city.slice(0, 3);
+    return `Por ${pick.length > 1 ? `${pick.slice(0, -1).join(', ')} y ${pick.at(-1)}` : pick[0]}`;
+  }
   const green = c.landmarks.filter((l) => l.green && !l.name.startsWith('Puente'));
   const river = c.landmarks.some((l) => l.name.startsWith('Puente'));
   const names = [...new Set([...green.map((l) => l.name), ...(river ? ['Madrid Río'] : [])])];
@@ -190,13 +197,22 @@ function routeName(c) {
   return `Por ${pick.length > 1 ? `${pick.slice(0, -1).join(', ')} y ${pick.at(-1)}` : pick[0]}`;
 }
 
-function score(c, targetKm, it) {
+// "Por dónde": cuántos de los 4 bucles atraen sus puntos de paso hacia parques (los demás
+// los dejan donde caen, en la calle) y cuánto pesan semáforos y asfalto al elegir la mejor.
+export const PREFERENCES = {
+  parques: { label: 'Parques', hint: 'Bucles atraídos hacia parques, Madrid Río y paseos peatonales.', green: 4, urban: 1 },
+  mezcla: { label: 'Mezcla', hint: 'La mitad de los bucles buscan parques y la otra mitad van por calles.', green: 2, urban: 0.5 },
+  ciudad: { label: 'Ciudad', hint: 'Bucles por las calles de Madrid, sin desviarse a buscar parques.', green: 0, urban: 0, walkway: 1, city: 0.4 },
+};
+
+function score(c, targetKm, it, pref = PREFERENCES.parques) {
   const gpk = c.gain == null ? (it.gainPerKm[0] + it.gainPerKm[1]) / 2 : c.gain / c.km; // sin datos: neutro
   const [lo, hi] = it.gainPerKm;
   const gainDev = Math.max(0, lo - gpk) + Math.max(0, gpk - hi);
   const asphalt = c.surface ? c.surface.asfalto : 45;
-  return Math.abs(targetKm - c.km) * 10 + gainDev * it.wGain + (c.signals ?? 8) * it.wSignals
-    + asphalt * it.wAsphalt + c.overlap * 0.5;
+  return Math.abs(targetKm - c.km) * 10 + gainDev * it.wGain
+    + ((c.signals ?? 8) * it.wSignals + asphalt * it.wAsphalt) * pref.urban
+    + (100 - asphalt) * (pref.city ?? 0) + c.overlap * 0.5; // en "Ciudad", mejor cuanto más calle
 }
 
 // Ejecuta tareas asíncronas con un máximo de `limit` a la vez.
@@ -216,17 +232,24 @@ async function pool(items, limit, fn) {
 // ---------------------------------------------------------------------------
 // API pública
 // ---------------------------------------------------------------------------
-export async function plan({ targetKm, intensity, seed = Date.now(), onProgress = () => {} }) {
+export async function plan({ targetKm, intensity, prefer = 'parques', seed = Date.now(), onProgress = () => {} }) {
   if (!(targetKm > 0 && targetKm <= MAX_KM)) throw new Error(`La distancia debe estar entre 0 y ${MAX_KM} km`);
   const it = INTENSITIES[intensity];
-  const prefs = { use_hills: it.useHills };
+  const pref = PREFERENCES[prefer] ?? PREFERENCES.parques;
+  // En "Ciudad" las aceras valen lo mismo que los paseos peatonales: no se desvía a buscarlos
+  const prefs = { use_hills: it.useHills, ...(pref.walkway ? { walkway_factor: pref.walkway } : {}) };
   const rand = rng(seed);
   onProgress('Cargando mapa de superficies…', 0.02);
   const idx = await loadSurface();
 
   // Un bucle por cuadrante, con una orientación inicial aleatoria: alternativas variadas.
   const base = rand() * 2 * Math.PI;
-  const shapes = Array.from({ length: CANDIDATES }, (_, i) => makeShape(base + (i * Math.PI * 2) / CANDIDATES, rand));
+  // En "Mezcla" se alternan (parque, calle, parque, calle) para que no caigan todos del mismo lado.
+  const greenAt = pref.green === 2 ? [true, false, true, false] : Array.from({ length: CANDIDATES }, (_, i) => i < pref.green);
+  const shapes = Array.from({ length: CANDIDATES }, (_, i) => ({
+    ...makeShape(base + (i * Math.PI * 2) / CANDIDATES, rand),
+    green: greenAt[i],
+  }));
 
   let done = 0;
   const results = await pool(shapes, 2, async (shape) => {
@@ -255,6 +278,7 @@ export async function plan({ targetKm, intensity, seed = Date.now(), onProgress 
       urlPoints: best.wps,
       direction: COMPASS[Math.round(deg / 45) % 8],
       intensity,
+      prefer,
     };
     c.samples = resample(c.coords, SAMPLE_M);
     try { await addElevation(c); } catch { c.gain = null; c.profile = []; }
@@ -266,7 +290,7 @@ export async function plan({ targetKm, intensity, seed = Date.now(), onProgress 
     c.anchorPoints = c.landmarks.map((l) => ({ name: l.name, at: l.at }));
     c.waypoints = [ORIGIN.name, ...c.landmarks.map((l) => l.name), ORIGIN.name];
     c.minutes = [c.km * it.pace[0], c.km * it.pace[1]];
-    c.score = score(c, targetKm, it);
+    c.score = score(c, targetKm, it, pref);
     if (c.km > MAX_KM) throw new Error('Límite de 10 km violado'); // garantía final
     fits.push(c);
   }

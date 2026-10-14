@@ -1,19 +1,20 @@
 // Interfaz: controles, generación, render de resultados, alternativas e historial.
 import { MAX_KM, INTENSITIES } from './config.js';
-import { plan, googleMapsUrl, toGpx } from './planner.js';
+import { plan, googleMapsUrl, toGpx, PREFERENCES } from './planner.js';
 import { createMap } from './map.js';
 import { renderProfile } from './profile.js';
 
 const $ = (id) => document.getElementById(id);
 const HISTORY_KEY = 'rutas-noviciado:history';
 const THEME_KEY = 'rutas-noviciado:theme';
+const PREFER_KEY = 'rutas-noviciado:prefer';
 const SURFACES = [
   { key: 'parque', label: 'Parque / peatonal', color: '--series-1' },
   { key: 'asfalto', label: 'Asfalto / acera', color: '--series-2' },
   { key: 'tierra', label: 'Tierra', color: '--series-3' },
 ];
 
-const state = { km: 8, intensity: 'medio', candidates: [], current: null };
+const state = { km: 8, intensity: 'medio', prefer: 'parques', candidates: [], current: null };
 
 // Estadísticas anónimas (GoatCounter). Cada evento aparece en el panel como una ruta propia,
 // así se ve cuántas veces se genera una ruta, con qué distancia e intensidad, y qué se hace con ella.
@@ -32,6 +33,9 @@ const store = {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* sin almacenamiento */ }
   },
 };
+
+const savedPrefer = store.get(PREFER_KEY, null);
+if (PREFERENCES[savedPrefer]) state.prefer = savedPrefer;
 
 // ---------------------------------------------------------------------------
 // Tema
@@ -74,12 +78,19 @@ function renderControls() {
     `<button type="button" data-k="${k}" aria-pressed="${k === state.intensity}">${it.label}</button>`).join('');
   $('intensity-hint').textContent = INTENSITIES[state.intensity].hint;
 
+  $('prefer').innerHTML = Object.entries(PREFERENCES).map(([k, p]) =>
+    `<button type="button" data-p="${k}" aria-pressed="${k === state.prefer}">${p.label}</button>`).join('');
+  $('prefer-hint').textContent = PREFERENCES[state.prefer].hint;
 }
 
 $('km').addEventListener('input', (e) => { state.km = Number(e.target.value); renderControls(); });
 $('intensity').addEventListener('click', (e) => {
   const k = e.target.closest('button')?.dataset.k;
   if (k) { state.intensity = k; renderControls(); }
+});
+$('prefer').addEventListener('click', (e) => {
+  const k = e.target.closest('button')?.dataset.p;
+  if (k) { state.prefer = k; store.set(PREFER_KEY, k); renderControls(); }
 });
 
 // ---------------------------------------------------------------------------
@@ -96,6 +107,7 @@ $('controls').addEventListener('submit', async (e) => {
     const { candidates } = await plan({
       targetKm: Math.min(state.km, MAX_KM),
       intensity: state.intensity,
+      prefer: state.prefer,
       onProgress: (msg, frac) => {
         $('progress-text').textContent = msg;
         $('progress-bar').style.width = `${Math.round(frac * 100)}%`;
@@ -107,6 +119,7 @@ $('controls').addEventListener('submit', async (e) => {
     track('ruta-generada', `${state.km.toFixed(1)} km · ${INTENSITIES[state.intensity].label}`);
     track(`distancia-${Math.round(state.km)}km`);
     track(`intensidad-${state.intensity}`);
+    track(`preferencia-${state.prefer}`);
     renderHistory();
   } catch (err) {
     track('error-al-generar', String(err.message).slice(0, 80));
